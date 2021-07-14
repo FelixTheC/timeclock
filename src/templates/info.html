@@ -1,0 +1,10 @@
+<h2>Beginning: {{ parse_date(starting_time) }}</h2>
+<h2>Breaks</h2>
+<ul>
+  {% for data in breaks %}
+    <li><span><b>{{ data["total"] }}:</b></span>
+      <span><em>({{ parse_date(data["start"]) }} - {{ parse_date(data["end"]) }})</em></span>
+    </li>
+  {% end %}
+</ul>
+<h2>Total: {{ overall_total }}</h2>
