@@ -23,6 +23,7 @@ class Employee(Base):
     uid = Column(String)
     name = Column(String)
     active = Column(Boolean, nullable=True, default=True)
+    checked_in = Column(Boolean, default=True)
     UniqueConstraint('uid', 'name', name='unique_uid_name_1')
 
 

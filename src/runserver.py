@@ -28,7 +28,7 @@ class Application(tornado.web.Application):
         handlers = [
             (r"/", MainHandler),
             (r"/auth/request/(.*)", CreateAuthRequest),
-            (r"/validate/auth/(.*)", ValidateAuthRequest),
+            (r"/validate/auth/(.*)/([0-9]{1,2})", ValidateAuthRequest),
             (r"/add/(.*)", NewEntry),
             (r"/list/(.*)", ListTimes),
             (r"/info/(.*)", InfoCurrentWorkingTime)

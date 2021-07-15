@@ -20,21 +20,24 @@
         </div>
         <div class="container">
             <div class="row">
-                <div class="col">
+                <div class="col-7">
                     {% for employee in employees %}
                         <button hx-get="/auth/request/{{ employee.uid }}"
                                 hx-trigger="click"
                                 hx-target="#search-results"
                                 hx-swap="innerHTML"
                         type="button"
-                        class="btn btn-info">
+                        class="btn {% if employee.checked_in %} btn-success {% else %} btn-secondary {% end %}">
                             {{employee.name}}
                         </button>
                     {% end %}
                 </div>
+                <div class="col-1">
+
+                </div>
                 <div id="search-results"
-                     class="col"
-                     _="on load wait 60s then remove me">
+                     class="col-4"
+                     _="on load wait 600s then remove me">
                 </div>
             </div>
         </div>

@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import asyncio
 import datetime
 import json
-import time
 from datetime import date
-from pprint import pprint
 from typing import Optional, Awaitable
 
 import tornado.web
@@ -91,35 +88,40 @@ async def database_stuff(user_uid, session):
 
 
 class CreateAuthRequest(BaseRequestHandler):
-    SUPPORTED_METHODS = ["GET"]
+    SUPPORTED_METHODS = ["GET", "POST"]
 
     async def get(self, user_uid):
+        await self.render("authenticate.html", user_uid=user_uid)
+
+    async def post(self, user_uid):
         tc = RCAuthentication(uid=user_uid)
         self.sqla_session.add_all([tc, ])
         await self.sqla_session.commit()
 
-        await self.render("authenticate.html", auth_request_id=tc.id)
+        counter = 0
+        progress_bar = (f'<div id="pb" class="progress-bar progress-bar-striped" '
+                        f'style="width: {counter}%" '
+                        f'aria-valuenow="{counter}" aria-valuemin="0" aria-valuemax="60">'
+                        f'</div>')
+
+        await self.render("proving_auth.html", auth_request_id=tc.id,
+                          counter=counter, progress_bar=progress_bar)
 
 
 class ValidateAuthRequest(BaseRequestHandler):
     SUPPORTED_METHODS = ["GET"]
 
-    async def get(self, auth_id):
-        auth = None
-        for _ in range(60):
-            result = await self.sqla_session.execute(
-                select(RCAuthentication).filter(and_(RCAuthentication.id == auth_id,
-                                                     RCAuthentication.authenticated_at != None
-                                                     ))
-            )
-            auth = result.scalars().first()
-            if auth is not None:
-                break
-            await asyncio.sleep(1)
+    async def get(self, auth_id, counter):
+        result = await self.sqla_session.execute(
+            select(RCAuthentication).filter(and_(RCAuthentication.id == auth_id,
+                                                 RCAuthentication.authenticated_at != None
+                                                 ))
+        )
+        auth = result.scalars().first()
 
         if auth is not None:
             self.redirect(f"/info/{auth.uid}")
-        else:
+        elif int(counter) == 60:
             result = await self.sqla_session.execute(
                 select(RCAuthentication).filter(RCAuthentication.id == auth_id)
             )
@@ -127,6 +129,16 @@ class ValidateAuthRequest(BaseRequestHandler):
             auth.deleted = True
             await self.sqla_session.commit()
             self.write("<p>Authentication failed.</p>")
+        else:
+            progress_bar = (f'<div id="pb" class="progress-bar progress-bar-striped" '
+                            f'style="width: {counter}%" '
+                            f'aria-valuenow="{counter}" aria-valuemin="0" aria-valuemax="60">'
+                            f'</div>')
+
+            await self.render("proving_auth.html",
+                              auth_request_id=auth_id,
+                              counter=int(counter) + 1,
+                              progress_bar=progress_bar)
 
 
 class NewEntry(BaseRequestHandler):
