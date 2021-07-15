@@ -14,7 +14,7 @@ from tornado_sqlalchemy import SQLAlchemy
 
 from src.template_functions import parse_date
 from src.views import MainHandler, NewEntry, ListTimes, InfoCurrentWorkingTime, CreateAuthRequest, \
-    ValidateAuthRequest
+    ValidateAuthRequest, ListEmployeesRequest
 
 BASE_DIR = Path(__file__).parent
 DATABASE_URL = 'sqlite+aiosqlite:////home/eisenmenger/PycharmProjects/time_clock/db.sqlite3'
@@ -27,6 +27,7 @@ class Application(tornado.web.Application):
     def __init__(self, db):
         handlers = [
             (r"/", MainHandler),
+            (r"/list/employees", ListEmployeesRequest),
             (r"/auth/request/(.*)", CreateAuthRequest),
             (r"/validate/auth/(.*)/([0-9]{1,2})", ValidateAuthRequest),
             (r"/add/(.*)", NewEntry),

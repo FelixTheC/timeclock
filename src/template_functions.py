@@ -7,6 +7,6 @@ from tornado import template
 
 def parse_date(view, data: datetime.datetime):
     try:
-        return data.strftime("%Y-%m-%d %H:%m")
+        return data.strftime("%Y-%m-%d %H:%M")
     except (AttributeError, ValueError):
         return data

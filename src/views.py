@@ -42,9 +42,16 @@ class MainHandler(BaseRequestHandler):
     SUPPORTED_METHODS = ["GET"]
 
     async def get(self):
+        await self.render("index.html")
+
+
+class ListEmployeesRequest(BaseRequestHandler):
+    SUPPORTED_METHODS = ["GET"]
+
+    async def get(self):
         result = await self.sqla_session.execute(select(Employee).filter(Employee.active == True))
         employees = [row["Employee"] for row in result.fetchall()]
-        await self.render("index.html", employees=employees)
+        await self.render("list_employees.html", employees=employees)
 
 
 async def database_stuff(user_uid, session):
@@ -79,10 +86,12 @@ async def database_stuff(user_uid, session):
         if time_clock is None:
             tc = TimeClock(check_in=datetime.datetime.utcnow(), employee_id=employee.id)
             session.add_all([tc, ])
+            employee.checked_in = True
             await session.commit()
         else:
             time_clock.check_out = datetime.datetime.utcnow()
             time_clock.calculate_total_time()
+            employee.checked_in = False
             await session.commit()
     return True
 
@@ -194,15 +203,17 @@ class InfoCurrentWorkingTime(BaseRequestHandler):
                 "overall_total": "-"
             }
             if data:
-                for idx, row in enumerate(data, 1):
-                    if idx % 2 == 0:
-                        break_.append(row["TimeClock"].check_in)
-                    else:
-                        checkout_time = row["TimeClock"].check_out
-                        if checkout_time is not None:
-                            break_.append(checkout_time)
-                        else:
-                            break
+                breaks = []
+                for idx, _ in enumerate(data):
+                    row = data[idx]
+                    if row["TimeClock"].check_out is not None:
+                        breaks.append({"start": row["TimeClock"].check_out})
+                    if idx > 0:
+                        selected_element = breaks[idx - 1]
+                        selected_element["end"] = row["TimeClock"].check_in
+                        selected_element["total"] = working_time_repr(
+                            (selected_element["end"] - selected_element["start"]
+                             ).total_seconds() / HOUR)
 
                 for row in data:
                     tt = row["TimeClock"].total
@@ -211,18 +222,9 @@ class InfoCurrentWorkingTime(BaseRequestHandler):
                     else:
                         total_time += (datetime.datetime.utcnow() - row["TimeClock"].check_in
                                        ).total_seconds() / HOUR
-
-                breaks_and_break_time = []
-                for i in range(0, len(break_), 2):
-                    sub_split = break_[i: i+2]
-                    breaks_and_break_time.append({
-                        "start": sub_split[0],
-                        "end": sub_split[1],
-                        "total": working_time_repr((sub_split[1] - sub_split[0]).total_seconds() / HOUR)
-                    })
                 return_data = {
                     "starting_time": data[0]["TimeClock"].check_in,
-                    "breaks": breaks_and_break_time,
+                    "breaks": breaks,
                     "overall_total": working_time_repr(total_time)
                 }
             await self.render("info.html", **return_data)
