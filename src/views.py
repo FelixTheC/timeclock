@@ -2,11 +2,14 @@
 # -*- coding: utf-8 -*-
 import datetime
 import json
+import os
+import time
 from datetime import date
 from typing import Optional, Awaitable
 
 import tornado.web
 from sqlalchemy import and_, func, select
+from tornado.escape import json_decode
 
 from src.models import Employee, TimeClock, HOUR, RCAuthentication
 from src.utils import working_time_repr
@@ -39,7 +42,7 @@ class BaseRequestHandler(tornado.web.RequestHandler):
 
 
 class MainHandler(BaseRequestHandler):
-    SUPPORTED_METHODS = ["GET"]
+    SUPPORTED_METHODS = ("GET",)
 
     async def get(self):
         await self.render("index.html")
@@ -97,7 +100,8 @@ async def database_stuff(user_uid, session):
 
 
 class CreateAuthRequest(BaseRequestHandler):
-    SUPPORTED_METHODS = ["GET", "POST"]
+    SUPPORTED_METHODS = ("GET", "POST")
+
 
     async def get(self, user_uid):
         await self.render("authenticate.html", user_uid=user_uid)
@@ -118,7 +122,7 @@ class CreateAuthRequest(BaseRequestHandler):
 
 
 class ValidateAuthRequest(BaseRequestHandler):
-    SUPPORTED_METHODS = ["GET"]
+    SUPPORTED_METHODS = ("GET",)
 
     async def get(self, auth_id, counter):
         result = await self.sqla_session.execute(
@@ -152,7 +156,7 @@ class ValidateAuthRequest(BaseRequestHandler):
 
 class NewEntry(BaseRequestHandler):
     """Only allow POST requests."""
-    SUPPORTED_METHODS = ["POST"]
+    SUPPORTED_METHODS = ("POST",)
 
     async def post(self, user_uid):
         await database_stuff(user_uid, self.sqla_session)
@@ -161,7 +165,7 @@ class NewEntry(BaseRequestHandler):
 
 class ListTimes(BaseRequestHandler):
     """Only allow GET requests."""
-    SUPPORTED_METHODS = ["GET"]
+    SUPPORTED_METHODS = ("GET",)
 
     async def get(self, user_uid):
         result = await self.sqla_session.execute(
@@ -177,7 +181,7 @@ class ListTimes(BaseRequestHandler):
 
 class InfoCurrentWorkingTime(BaseRequestHandler):
     """Only allow GET requests."""
-    SUPPORTED_METHODS = ["GET"]
+    SUPPORTED_METHODS = ("GET",)
 
     async def get(self, user_uid):
         result = await self.sqla_session.execute(
@@ -230,3 +234,19 @@ class InfoCurrentWorkingTime(BaseRequestHandler):
             await self.render("info.html", **return_data)
         else:
             self.send_error(status_code=404)
+
+
+class CreateNewEmployeeRequest(BaseRequestHandler):
+    SUPPORTED_METHODS = ("POST",)
+
+    async def post(self, verfication_str):
+        if verfication_str == os.getenv("SECRET"):
+            self.args = json_decode(self.request.body)
+            user_id = self.args["user_id"]
+            user_name = self.args["username"]
+            new_user = Employee(uid=user_id, name=user_name)
+            self.sqla_session.add_all([new_user, ])
+            await self.sqla_session.commit()
+            self.set_status(201)
+        else:
+            self.send_error(403)

@@ -83,7 +83,6 @@ indexes = [
 def migrate():
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    from src.runserver import DATABASE_URL
     engine = create_engine('sqlite:////home/eisenmenger/PycharmProjects/time_clock/db.sqlite3')
 
     session = sessionmaker()
