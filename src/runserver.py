@@ -3,6 +3,7 @@
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 import tornado.web
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -13,11 +14,16 @@ from tornado.options import define, options
 from tornado_sqlalchemy import SQLAlchemy
 
 from src.template_functions import parse_date
+from src.views import CreateNewEmployeeRequest
 from src.views import MainHandler, NewEntry, ListTimes, InfoCurrentWorkingTime, CreateAuthRequest, \
     ValidateAuthRequest
 
+
+load_dotenv()
+
 BASE_DIR = Path(__file__).parent
-DATABASE_URL = 'sqlite+aiosqlite:////home/eisenmenger/PycharmProjects/time_clock/db.sqlite3'
+DATABASE_PATH = "/home/felix/PycharmProjects/timeclock/db.sqlite3"
+DATABASE_URL = f'sqlite+aiosqlite:///{DATABASE_PATH}'
 sqla_engine = create_async_engine(DATABASE_URL, echo=True)
 
 define("port", default=8888, help="run on the given port", type=int)
@@ -29,6 +35,7 @@ class Application(tornado.web.Application):
             (r"/", MainHandler),
             (r"/auth/request/(.*)", CreateAuthRequest),
             (r"/validate/auth/(.*)", ValidateAuthRequest),
+            (r"/new-employee/(.*)", CreateNewEmployeeRequest),
             (r"/add/(.*)", NewEntry),
             (r"/list/(.*)", ListTimes),
             (r"/info/(.*)", InfoCurrentWorkingTime)
