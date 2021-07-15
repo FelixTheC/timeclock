@@ -23,6 +23,7 @@ class Employee(Base):
     uid = Column(String)
     name = Column(String)
     active = Column(Boolean, nullable=True, default=True)
+    checked_in = Column(Boolean, default=True)
     UniqueConstraint('uid', 'name', name='unique_uid_name_1')
 
 
@@ -33,6 +34,7 @@ class RCAuthentication(Base):
     requested_at = Column(DateTime, default=datetime.datetime.utcnow)
     authenticated_at = Column(DateTime, nullable=True)
     success = Column(Boolean, default=False)
+    deleted = Column(Boolean, default=False)
     UniqueConstraint('uid', name='rcauthentication_uid_uindex')
 
     @property

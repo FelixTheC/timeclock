@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import asyncio
 import datetime
 import json
-import time
 from datetime import date
-from pprint import pprint
 from typing import Optional, Awaitable
 
 import tornado.web
@@ -45,9 +42,16 @@ class MainHandler(BaseRequestHandler):
     SUPPORTED_METHODS = ["GET"]
 
     async def get(self):
+        await self.render("index.html")
+
+
+class ListEmployeesRequest(BaseRequestHandler):
+    SUPPORTED_METHODS = ["GET"]
+
+    async def get(self):
         result = await self.sqla_session.execute(select(Employee).filter(Employee.active == True))
         employees = [row["Employee"] for row in result.fetchall()]
-        await self.render("index.html", employees=employees)
+        await self.render("list_employees.html", employees=employees)
 
 
 async def database_stuff(user_uid, session):
@@ -58,12 +62,13 @@ async def database_stuff(user_uid, session):
         result = await session.execute(
             select(RCAuthentication)
                 .filter(and_(RCAuthentication.uid == user_uid,
-                             RCAuthentication.authenticated_at == None))
+                             RCAuthentication.authenticated_at == None,
+                             RCAuthentication.deleted == False))
                 .order_by(RCAuthentication.requested_at.desc())
         )
         auth = result.scalars().first()
         if auth is not None:
-            if not auth.out_of_time():
+            if not auth.out_of_time:
                 if (datetime.datetime.utcnow() - auth.requested_at).total_seconds() > 600:
                     auth.success = False
                 else:
@@ -81,45 +86,68 @@ async def database_stuff(user_uid, session):
         if time_clock is None:
             tc = TimeClock(check_in=datetime.datetime.utcnow(), employee_id=employee.id)
             session.add_all([tc, ])
+            employee.checked_in = True
             await session.commit()
         else:
             time_clock.check_out = datetime.datetime.utcnow()
             time_clock.calculate_total_time()
+            employee.checked_in = False
             await session.commit()
     return True
 
 
 class CreateAuthRequest(BaseRequestHandler):
-    SUPPORTED_METHODS = ["GET"]
+    SUPPORTED_METHODS = ["GET", "POST"]
 
     async def get(self, user_uid):
+        await self.render("authenticate.html", user_uid=user_uid)
+
+    async def post(self, user_uid):
         tc = RCAuthentication(uid=user_uid)
         self.sqla_session.add_all([tc, ])
         await self.sqla_session.commit()
 
-        await self.render("authenticate.html", auth_request_id=tc.id)
+        counter = 0
+        progress_bar = (f'<div id="pb" class="progress-bar progress-bar-striped" '
+                        f'style="width: {counter}%" '
+                        f'aria-valuenow="{counter}" aria-valuemin="0" aria-valuemax="60">'
+                        f'</div>')
+
+        await self.render("proving_auth.html", auth_request_id=tc.id,
+                          counter=counter, progress_bar=progress_bar)
 
 
 class ValidateAuthRequest(BaseRequestHandler):
     SUPPORTED_METHODS = ["GET"]
 
-    async def get(self, auth_id):
-        auth = None
-        for _ in range(60):
-            result = await self.sqla_session.execute(
-                select(RCAuthentication).filter(and_(RCAuthentication.id == auth_id,
-                                                     RCAuthentication.authenticated_at != None
-                                                     ))
-            )
-            auth = result.scalars().first()
-            if auth is not None:
-                break
-            await asyncio.sleep(1)
+    async def get(self, auth_id, counter):
+        result = await self.sqla_session.execute(
+            select(RCAuthentication).filter(and_(RCAuthentication.id == auth_id,
+                                                 RCAuthentication.authenticated_at != None
+                                                 ))
+        )
+        auth = result.scalars().first()
 
         if auth is not None:
             self.redirect(f"/info/{auth.uid}")
-        else:
+        elif int(counter) == 60:
+            result = await self.sqla_session.execute(
+                select(RCAuthentication).filter(RCAuthentication.id == auth_id)
+            )
+            auth = result.scalars().first()
+            auth.deleted = True
+            await self.sqla_session.commit()
             self.write("<p>Authentication failed.</p>")
+        else:
+            progress_bar = (f'<div id="pb" class="progress-bar progress-bar-striped" '
+                            f'style="width: {counter}%" '
+                            f'aria-valuenow="{counter}" aria-valuemin="0" aria-valuemax="60">'
+                            f'</div>')
+
+            await self.render("proving_auth.html",
+                              auth_request_id=auth_id,
+                              counter=int(counter) + 1,
+                              progress_bar=progress_bar)
 
 
 class NewEntry(BaseRequestHandler):
@@ -169,37 +197,36 @@ class InfoCurrentWorkingTime(BaseRequestHandler):
                     .order_by(TimeClock.check_in.asc())
             )
             data = result.fetchall()
-            for idx, row in enumerate(data, 1):
-                if idx % 2 == 0:
-                    break_.append(row["TimeClock"].check_in)
-                else:
-                    checkout_time = row["TimeClock"].check_out
-                    if checkout_time is not None:
-                        break_.append(checkout_time)
-                    else:
-                        break
-
-            for row in data:
-                tt = row["TimeClock"].total
-                if tt is not None:
-                    total_time += tt
-                else:
-                    total_time += (datetime.datetime.utcnow() - row["TimeClock"].check_in
-                                   ).total_seconds() / HOUR
-
-            breaks_and_break_time = []
-            for i in range(0, len(break_), 2):
-                sub_split = break_[i: i+2]
-                breaks_and_break_time.append({
-                    "start": sub_split[0],
-                    "end": sub_split[1],
-                    "total": working_time_repr((sub_split[1] - sub_split[0]).total_seconds() / HOUR)
-                })
-            data = {
-                "starting_time": data[0]["TimeClock"].check_in,
-                "breaks": breaks_and_break_time,
-                "overall_total": working_time_repr(total_time)
+            return_data = {
+                "starting_time": "-",
+                "breaks": [],
+                "overall_total": "-"
             }
-            await self.render("info.html", **data)
+            if data:
+                breaks = []
+                for idx, _ in enumerate(data):
+                    row = data[idx]
+                    if row["TimeClock"].check_out is not None:
+                        breaks.append({"start": row["TimeClock"].check_out})
+                    if idx > 0:
+                        selected_element = breaks[idx - 1]
+                        selected_element["end"] = row["TimeClock"].check_in
+                        selected_element["total"] = working_time_repr(
+                            (selected_element["end"] - selected_element["start"]
+                             ).total_seconds() / HOUR)
+
+                for row in data:
+                    tt = row["TimeClock"].total
+                    if tt is not None:
+                        total_time += tt
+                    else:
+                        total_time += (datetime.datetime.utcnow() - row["TimeClock"].check_in
+                                       ).total_seconds() / HOUR
+                return_data = {
+                    "starting_time": data[0]["TimeClock"].check_in,
+                    "breaks": breaks,
+                    "overall_total": working_time_repr(total_time)
+                }
+            await self.render("info.html", **return_data)
         else:
             self.send_error(status_code=404)
