@@ -33,6 +33,7 @@ class RCAuthentication(Base):
     requested_at = Column(DateTime, default=datetime.datetime.utcnow)
     authenticated_at = Column(DateTime, nullable=True)
     success = Column(Boolean, default=False)
+    deleted = Column(Boolean, default=False)
     UniqueConstraint('uid', name='rcauthentication_uid_uindex')
 
     @property

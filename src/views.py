@@ -58,12 +58,13 @@ async def database_stuff(user_uid, session):
         result = await session.execute(
             select(RCAuthentication)
                 .filter(and_(RCAuthentication.uid == user_uid,
-                             RCAuthentication.authenticated_at == None))
+                             RCAuthentication.authenticated_at == None,
+                             RCAuthentication.deleted == False))
                 .order_by(RCAuthentication.requested_at.desc())
         )
         auth = result.scalars().first()
         if auth is not None:
-            if not auth.out_of_time():
+            if not auth.out_of_time:
                 if (datetime.datetime.utcnow() - auth.requested_at).total_seconds() > 600:
                     auth.success = False
                 else:
@@ -119,6 +120,12 @@ class ValidateAuthRequest(BaseRequestHandler):
         if auth is not None:
             self.redirect(f"/info/{auth.uid}")
         else:
+            result = await self.sqla_session.execute(
+                select(RCAuthentication).filter(RCAuthentication.id == auth_id)
+            )
+            auth = result.scalars().first()
+            auth.deleted = True
+            await self.sqla_session.commit()
             self.write("<p>Authentication failed.</p>")
 
 
@@ -169,37 +176,43 @@ class InfoCurrentWorkingTime(BaseRequestHandler):
                     .order_by(TimeClock.check_in.asc())
             )
             data = result.fetchall()
-            for idx, row in enumerate(data, 1):
-                if idx % 2 == 0:
-                    break_.append(row["TimeClock"].check_in)
-                else:
-                    checkout_time = row["TimeClock"].check_out
-                    if checkout_time is not None:
-                        break_.append(checkout_time)
-                    else:
-                        break
-
-            for row in data:
-                tt = row["TimeClock"].total
-                if tt is not None:
-                    total_time += tt
-                else:
-                    total_time += (datetime.datetime.utcnow() - row["TimeClock"].check_in
-                                   ).total_seconds() / HOUR
-
-            breaks_and_break_time = []
-            for i in range(0, len(break_), 2):
-                sub_split = break_[i: i+2]
-                breaks_and_break_time.append({
-                    "start": sub_split[0],
-                    "end": sub_split[1],
-                    "total": working_time_repr((sub_split[1] - sub_split[0]).total_seconds() / HOUR)
-                })
-            data = {
-                "starting_time": data[0]["TimeClock"].check_in,
-                "breaks": breaks_and_break_time,
-                "overall_total": working_time_repr(total_time)
+            return_data = {
+                "starting_time": "-",
+                "breaks": [],
+                "overall_total": "-"
             }
-            await self.render("info.html", **data)
+            if data:
+                for idx, row in enumerate(data, 1):
+                    if idx % 2 == 0:
+                        break_.append(row["TimeClock"].check_in)
+                    else:
+                        checkout_time = row["TimeClock"].check_out
+                        if checkout_time is not None:
+                            break_.append(checkout_time)
+                        else:
+                            break
+
+                for row in data:
+                    tt = row["TimeClock"].total
+                    if tt is not None:
+                        total_time += tt
+                    else:
+                        total_time += (datetime.datetime.utcnow() - row["TimeClock"].check_in
+                                       ).total_seconds() / HOUR
+
+                breaks_and_break_time = []
+                for i in range(0, len(break_), 2):
+                    sub_split = break_[i: i+2]
+                    breaks_and_break_time.append({
+                        "start": sub_split[0],
+                        "end": sub_split[1],
+                        "total": working_time_repr((sub_split[1] - sub_split[0]).total_seconds() / HOUR)
+                    })
+                return_data = {
+                    "starting_time": data[0]["TimeClock"].check_in,
+                    "breaks": breaks_and_break_time,
+                    "overall_total": working_time_repr(total_time)
+                }
+            await self.render("info.html", **return_data)
         else:
             self.send_error(status_code=404)
