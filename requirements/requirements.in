@@ -1,5 +1,7 @@
 alembic==1.6.5
 aiosqlite==0.17.0
+black==21.6b0
+isort==5.9.2
 python-dotenv==0.18.0
 SQLAlchemy==1.4.3
 tornado==6.1
