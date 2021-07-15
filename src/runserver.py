@@ -16,7 +16,7 @@ from tornado_sqlalchemy import SQLAlchemy
 from src.template_functions import parse_date
 from src.views import CreateNewEmployeeRequest
 from src.views import MainHandler, NewEntry, ListTimes, InfoCurrentWorkingTime, CreateAuthRequest, \
-    ValidateAuthRequest
+    ValidateAuthRequest, ListEmployeesRequest
 
 
 load_dotenv()
@@ -33,6 +33,7 @@ class Application(tornado.web.Application):
     def __init__(self, db):
         handlers = [
             (r"/", MainHandler),
+            (r"/list/employees", ListEmployeesRequest),
             (r"/auth/request/(.*)", CreateAuthRequest),
             (r"/validate/auth/(.*)", ValidateAuthRequest),
             (r"/new-employee/(.*)", CreateNewEmployeeRequest),

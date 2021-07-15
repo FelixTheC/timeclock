@@ -1,0 +1,15 @@
+<div class="col-6" hx-target="this"
+                   hx-get="/list/employees"
+                   hx-trigger="load delay:60s"
+                   hx-swap="outerHTML">
+    {% for employee in employees %}
+        <button hx-get="/auth/request/{{ employee.uid }}"
+                hx-trigger="click"
+                hx-target="#search-results"
+                hx-swap="innerHTML"
+        type="button"
+        class="btn {% if employee.checked_in %} btn-success {% else %} btn-secondary {% end %}">
+            {{employee.name}}
+        </button>
+    {% end %}
+</div>
