@@ -3,8 +3,17 @@
 import datetime
 import uuid
 
-from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Index,
-                        Integer, String, UniqueConstraint)
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from tornado_sqlalchemy import declarative_base
 
 from src.utils import working_time_repr

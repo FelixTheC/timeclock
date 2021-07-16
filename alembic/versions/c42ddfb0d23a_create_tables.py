@@ -10,6 +10,7 @@ import datetime
 import sqlalchemy as sa
 
 from alembic import op
+
 # revision identifiers, used by Alembic.
 from src.models import uuid_str
 

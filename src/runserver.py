@@ -14,9 +14,16 @@ from tornado.options import define, options
 from tornado_sqlalchemy import SQLAlchemy
 
 from src.template_functions import parse_date
-from src.views import (CreateAuthRequest, CreateNewEmployeeRequest,
-                       InfoCurrentWorkingTime, ListEmployeesRequest, ListTimes,
-                       MainHandler, NewEntry, ValidateAuthRequest)
+from src.views import (
+    CreateAuthRequest,
+    CreateNewEmployeeRequest,
+    InfoCurrentWorkingTime,
+    ListEmployeesRequest,
+    ListTimes,
+    MainHandler,
+    NewEntry,
+    ValidateAuthRequest,
+)
 
 load_dotenv()
 
