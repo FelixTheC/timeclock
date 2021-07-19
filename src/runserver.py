@@ -28,7 +28,7 @@ from src.views import (
 load_dotenv()
 
 BASE_DIR = Path(__file__).parent
-DATABASE_PATH = "/home/felix/PycharmProjects/timeclock/db.sqlite3"
+DATABASE_PATH = "/home/eisenmenger/PycharmProjects/time_clock/db.sqlite3"
 DATABASE_URL = f"sqlite+aiosqlite:///{DATABASE_PATH}"
 sqla_engine = create_async_engine(DATABASE_URL, echo=True)
 
@@ -41,7 +41,7 @@ class Application(tornado.web.Application):
             (r"/", MainHandler),
             (r"/list/employees", ListEmployeesRequest),
             (r"/auth/request/(.*)", CreateAuthRequest),
-            (r"/validate/auth/(.*)", ValidateAuthRequest),
+            (r"/validate/auth/(.*)/([0-9]{1,2})", ValidateAuthRequest),
             (r"/new-employee/(.*)", CreateNewEmployeeRequest),
             (r"/add/(.*)", NewEntry),
             (r"/list/(.*)", ListTimes),
