@@ -171,11 +171,12 @@ class ValidateAuthRequest(BaseRequestHandler):
             auth = result.scalars().first()
             auth.deleted = True
             await self.sqla_session.commit()
-            self.write("<p>Authentication failed.</p>")
+            self.write("<h2>Authentication failed.</h2>")
         else:
+            percentage = int(int(counter) * 1.6)
             progress_bar = (
                 f'<div id="pb" class="progress-bar progress-bar-striped" '
-                f'style="width: {counter}%" '
+                f'style="width: {percentage}%" '
                 f'aria-valuenow="{counter}" aria-valuemin="0" aria-valuemax="60">'
                 f"</div>"
             )

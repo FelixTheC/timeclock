@@ -12,27 +12,40 @@
     <script src="https://unpkg.com/htmx.org@1.5.0"></script>
     <script src="https://unpkg.com/hyperscript.org@0.8.1"></script>
     <title>Time Clock</title>
+    <style type="text/css">
+        .title {
+            padding-top: 2em;
+            padding-bottom: 2em;
+            background-color: beige;
+            text-align: center
+        }
+        .btn-custom {
+            margin-bottom: 4px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <div class="container-md">
-            <h1 style="text-align: center">Some Header</h1>
-        </div>
         <div class="container">
-            <div class="row">
-                <div class="col-6"
-                     hx-target="this"
-                     hx-get="/list/employees"
-                     hx-trigger="load delay:60ms"
-                     hx-swap="outerHTML"
-                     id="list-employees">
-                </div>
-                <div class="col-1">
+            <div class="container-md title">
+                <h1>Time clock</h1>
+            </div>
+            <div class="container" style="margin-top: 1em;">
+                <div class="row">
+                    <div class="col-6"
+                         hx-target="this"
+                         hx-get="/list/employees"
+                         hx-trigger="load delay:60ms"
+                         hx-swap="outerHTML"
+                         id="list-employees">
+                    </div>
+                    <div class="col-1">
 
-                </div>
-                <div id="search-results"
-                     class="col-5"
-                     _="on load wait 600s then remove me">
+                    </div>
+                    <div id="search-results"
+                         class="col-5"
+                         _="on load wait 600s then remove me">
+                    </div>
                 </div>
             </div>
         </div>
